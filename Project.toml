@@ -1,0 +1,7 @@
+name = "FengYun"
+uuid = "d9879c63-9df5-4d27-8829-baabb7137dc0"
+authors = ["Dongdong Kong <kongdd@users.noreply.github.com>"]
+version = "0.1.0"
+
+[deps]
+NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
