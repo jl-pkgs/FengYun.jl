@@ -1,0 +1,13 @@
+china_4km:
+  description: china_4km
+  projection:
+    proj: laea
+    ellps: WGS84
+    lat_0: 35.0
+    lon_0: 105.0
+  shape:
+    height: 1069
+    width: 1864
+  area_extent:
+    lower_left_xy: [-3728025.510207, -1619885.479300]
+    upper_right_xy: [3728025.510207, 2654620.969416]
