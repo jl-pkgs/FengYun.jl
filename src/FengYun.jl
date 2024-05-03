@@ -7,5 +7,6 @@ export read_band
 
 include("FY_latlon.jl")
 include("read_band.jl")
+include("BRDF.jl")
 
 end # module FengYun

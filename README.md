@@ -8,3 +8,8 @@
 > 经纬度文件
 
 <http://satellite.nsmc.org.cn/PortalSite/StaticContent/DocumentDownload.aspx?TypeID=3>
+
+# 大气矫正方法
+
+1. 大气校正：<https://github.com/Zhaoguanhua/AtmosphericCorrection>
+2. 角度矫正：<https://github.com/GERSL/Preprocessing-Tools>
