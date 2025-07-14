@@ -1,0 +1,85 @@
+```{julia}
+using NetCDFTools, NCDatasets, Ipaper
+using MakieLayers, GLMakie
+using FengYun
+# using JLD2
+
+# includet("FY-4B.jl")
+f_loc = "data/FY4B-_DISK_1050E_GEO_NOM_LUT_20240227000000_4000M_V0001.raw"
+lon, lat = read_FY_latlon(f_loc; n=2748) # lon, lat
+
+# _x = NaNStatistics.nanmean(lon, dims=1)
+# _y = NaNStatistics.nanmean(lat, dims=2)
+_x = 1:n
+_y = n:-1:1
+# f = "data/FY4B-_AGRI--_N_DISK_1050E_L1-_FDI-_MULT_NOM_20240502030000_20240502031459_4000M_V0001.HDF"
+f = "data/FY4B-_AGRI--_N_DISK_1050E_L2-_QPE-_MULT_NOM_20250714014500_20250714015959_4000M_V0001.NC"
+nc = nc_open(f)
+P = nc["Precipitation"][:, :]
+replace!(P, 65535.0 => NaN32)
+replace!(P, 65534.0 => NaN32)
+replace!(P, 65533.0 => NaN32)
+
+ncsave("FY4B_20250714014500_20250714015959.nc"; dims=(; i=_x, j=_y), lon, lat, P)
+```
+
+```{julia}
+# nc.group["Data"]["NOMChannel01"]
+# @time val = read_band(nc, "Channel12");
+n = 2748
+fig = Figure(; size=(1600, 600))
+
+imagesc!(fig[1, 1], _x, _y, lon; colors=amwg256, title="lon")
+imagesc!(fig[1, 2], _x, _y, lat; colors=amwg256, title="lat")
+imagesc!(fig[1, 3], _x, _y, P; colors=amwg256, title="P")
+fig
+# Int64.(nom.attrib["valid_range"]): 0, 4095
+```
+
+```{julia}
+b = bbox(0, 15, 180, 55)
+Lon, Lat = bbox2dims(b; cellsize=0.1)
+nlon, nlat = length(Lon), length(Lat)
+A = rand(nlon, nlat)
+ra = rast(A)
+# r = bilinear(lon, lat, Z, Lon, Lat; na_rm=true)
+
+using Interpolations
+itp = interpolate((lon, lat), P, Gridded(Linear()))  # 双线性插值
+```
+
+```{julia}
+x = lon[:]
+y = lat[:]
+z = P[:]
+inds = @. !isnan(x + y)
+
+x = x[inds]
+y = y[inds]
+z = z[inds]
+
+r = bilinear(x, y, z, Lon, Lat; na_rm=true)
+```
+
+
+
+```{julia}
+b = bbox(70, 15, 140, 55)
+I = (b.xmin .<= lon .<= b.xmax) .&& (b.ymin .<= lat .<= b.ymax)
+findall(I) # 14.8%, 1,121,690 1百万个格点
+```
+
+
+```{julia}
+_dims = [
+  NcDim("x", 1:size(lon, 1)),
+  NcDim("y", 1:size(lon, 2))]
+nc_write!("data/FY4B_DISK_lonlat_4km.nc", (; lon, lat), _dims)
+```
+
+## 知道经纬度之后，如何转为WGS84
+## 读取经纬度
+
+```{julia}
+LON, LAT = bbox2dims(b; cellsize=0.1)
+```

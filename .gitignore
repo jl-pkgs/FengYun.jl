@@ -9,3 +9,8 @@ data
 *.png
 *.tiff
 *.pdf
+
+OUTPUT
+*.nc
+*.zip
+*.txt
