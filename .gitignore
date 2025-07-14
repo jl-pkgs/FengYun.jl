@@ -6,7 +6,7 @@ data
 *.tar
 6sV2.1
 
-*.png
+# *.png
 *.tiff
 *.pdf
 
