@@ -1,0 +1,92 @@
+```{r}
+source("./Project_FY4B/main_pkgs.R")
+
+options(datatable.print.nrow = 21)
+f_full = "./Project_FY4B/data/filelist_full_202206-202412.txt"
+
+detect_date <- function(files) {
+  data.table(file = files) %>% mutate(
+    date_beg = str_extract(file, "\\d{14}(?=_\\d{14})") %>% as_datetime(),
+    date_end = str_extract(file, "(?<=\\d{14}_)\\d{14}") %>% as_datetime(),
+    dhour = cal_hours(date_end, date_beg), 
+    .before = file
+  )
+}
+```
+
+## 1 full
+```{r}
+dates_all <- seq(make_datetime(2022, 6), make_datetime(2024, 12, 31, 23), by = "hour")
+df_full = fread(f_full)$file %>% detect_date()
+```
+
+## 2 检索已下载的文件列表
+
+```{r}
+indirs = dir2("Z:/China/Prcp_Hourly_FY4B_202206-now")[1:4]
+fs = llply(indirs, \(indir) dir2(indir, "*.NC"), .progress="text") %>% unlist()
+# fs1 = dir2("Z:/China/Prcp_Hourly_FY4B_202206-now/RAW1/", "*.NC", recursive=TRUE)
+# fs2 = dir2("Z:/China/Prcp_Hourly_FY4B_202206-now/RAW2/", "*.NC", recursive=TRUE)
+# fs = c(fs1, fs2)
+files = sort(unique(fs))
+writeLines(files, "filelist.txt")
+```
+
+## move files
+
+```{r}
+.tmp = foreach(YEAR = 2025, i = icount()) %do% {
+    runningId(i)
+
+    files = dat[year(date_beg) == YEAR, file]
+    outdir = sprintf("Z:/China/Prcp_Hourly_FY4B_202206-now/%d", YEAR)
+    mkdir(outdir)
+    file_mv(files, outdir)
+}
+```
+
+
+## 3 检查漏下文件
+```{r}
+dat = readLines("filelist.txt") %>% detect_date()
+df = readLines("filelist.txt") %>% basename() %>% unique() %>% detect_date()
+setkeyv(df, c("date_beg", "date_end"))
+```
+
+
+
+```{r}
+dates1 = df[dhour == 1, date_beg] # 14538
+dates2 = df[dhour == 0.25, .(date_beg)] %>% 
+    .[, .N, .(date_beg = round_date(date_beg, "hour"))] %>% 
+    .[N == 4, date_beg]
+
+dates = c(dates1, dates2) %>% unique()
+dates_miss = setdiff(dates_all, dates) # 4408
+
+lst = split(dates_miss, year(dates_miss)) %>% map(\(date) data.table(date))
+write_list2xlsx(lst, "FY4B_miss.xlsx")
+
+data.table(date = dates_miss) %>% 
+    .[, .N, .(date = round_date(date, "month"))]
+
+```
+
+```{r}
+# df[dhour <= 1, .N, .(dhour)]
+# df[dhour == 0.25, .N, .(date = date_ym(date_beg))]
+# df[dhour < 0.25 & date_ym(date_beg) == make_date(2022, 9)]
+```
+
+## 4 重新下载
+
+```{r}
+files = dir2("./Project_FY4B/data-raw/")
+urls = map(files, \(f) readLines(f)) %>% unlist()
+writeLines(urls, "./Project_FY4B/data/urls.txt")
+```
+
+```{r}
+df = detect_date(urls)
+df[, .N, .(date = round_date(date_beg, "month"))][order(date)]
+```
