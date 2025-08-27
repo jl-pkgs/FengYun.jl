@@ -1,3 +1,9 @@
+# 4km
+n = 2748
+_x = 1:n
+_y = n:-1:1
+
+
 function read_bin(f::String, dim; type=Float32)
   A = Array{type}(undef, dim)
   read!(f, A) # read data, 读取的顺序与python相反

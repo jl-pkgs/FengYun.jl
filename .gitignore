@@ -17,3 +17,6 @@ OUTPUT
 
 *.xlsx
 *.ps1
+
+*.csv
+backup

@@ -1,11 +1,12 @@
 ```{r}
 source("./Project_FY4B/main_pkgs.R")
 
-options(datatable.print.nrow = 21)
+options(datatable.print.nrow = 27)
 f_full = "./Project_FY4B/data/filelist_full_202206-202412.txt"
 
 detect_date <- function(files) {
   data.table(file = files) %>% mutate(
+    center = str_extract(basename(file), "\\d{3,4}E"), 
     date_beg = str_extract(file, "\\d{14}(?=_\\d{14})") %>% as_datetime(),
     date_end = str_extract(file, "(?<=\\d{14}_)\\d{14}") %>% as_datetime(),
     dhour = cal_hours(date_end, date_beg), 
@@ -45,41 +46,55 @@ writeLines(files, "filelist.txt")
 }
 ```
 
+## 补充漏下文件
+
+```{r}
+files_dl = readLines("Project_FY4B/data-raw/A202508260248032062.txt")
+files_ok = setdiff(basename(files_dl), basename(files))
+inds = match2(basename(files_dl), files_ok)$I_x
+writeLines(files_dl[inds], "urls.txt")
+```
 
 ## 3 检查漏下文件
 ```{r}
-dat = readLines("filelist.txt") %>% detect_date()
-df = readLines("filelist.txt") %>% basename() %>% unique() %>% detect_date()
+# dat = readLines("filelist.txt") %>% detect_date()
+# %>% basename() %>% unique() 
+df = readLines("filelist.txt") %>% detect_date() %>% 
+    mutate(date = round_date(date_beg, "hour"), .before = 1)
 setkeyv(df, c("date_beg", "date_end"))
 ```
 
 
-
 ```{r}
-dates1 = df[dhour == 1, date_beg] # 14538
-dates2 = df[dhour == 0.25, .(date_beg)] %>% 
-    .[, .N, .(date_beg = round_date(date_beg, "hour"))] %>% 
-    .[N == 4, date_beg]
+dates1 = df[dhour == 1, date] # 14538
+dates2 = df[dhour == 0.25, .(date)] %>% 
+    .[, .N, .(date)] %>% 
+    .[N == 4, date]
 
 dates = c(dates1, dates2) %>% unique()
 dates_miss = setdiff(dates_all, dates) # 4408
 
-lst = split(dates_miss, year(dates_miss)) %>% map(\(date) data.table(date))
-write_list2xlsx(lst, "FY4B_miss.xlsx")
-
+dat = df[date %in% dates1 & dhour == 1]
+fwrite(dat, "selected_FY4B_1hour_2022-2024.csv")
+# lst = split(dates_miss, year(dates_miss)) %>% map(\(date) data.table(date))
+# write_list2xlsx(lst, "FY4B_miss2.xlsx")
 data.table(date = dates_miss) %>% 
     .[, .N, .(date = round_date(date, "month"))]
-
 ```
 
 ```{r}
+dat2 = df[date %in% dates2 & dhour == 0.25, ]
+fwrite(dat2, "selected_FY4B_15min_2022-2024.csv")
+```
+
+```{r}
+# 1330E, 1050E
 # df[dhour <= 1, .N, .(dhour)]
 # df[dhour == 0.25, .N, .(date = date_ym(date_beg))]
 # df[dhour < 0.25 & date_ym(date_beg) == make_date(2022, 9)]
 ```
 
 ## 4 重新下载
-
 ```{r}
 files = dir2("./Project_FY4B/data-raw/")
 urls = map(files, \(f) readLines(f)) %>% unlist()
@@ -90,3 +105,5 @@ writeLines(urls, "./Project_FY4B/data/urls.txt")
 df = detect_date(urls)
 df[, .N, .(date = round_date(date_beg, "month"))][order(date)]
 ```
+
+2024-03-05之后，从133°E -> 105°E
